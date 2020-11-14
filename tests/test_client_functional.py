@@ -2944,3 +2944,25 @@ async def test_read_bufsize_explicit(aiohttp_client) -> None:
 
     async with await client.get("/", read_bufsize=4) as resp:
         assert resp.content.get_read_buffer_limits() == (4, 8)
+
+
+async def test_5220(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(text="OK", status=200)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+    app.add_routes([web.put("/", handler)])
+
+    client = await aiohttp_client(app)
+    print(client.host, client.port)
+
+    async def data_gen():
+        for _ in range(10):
+            yield b"just data"
+            await asyncio.sleep(0.1)
+
+    async with client.put("/", data=data_gen(), raise_for_status=True):
+        pass
+    async with client.get("/", raise_for_status=True):
+        pass

@@ -299,6 +299,7 @@ class RequestHandler(BaseProtocol):
         super().connection_lost(exc)
 
         self._manager = None
+        print("connection_lost")
         self._force_close = True
         self._request_factory = None
         self._request_handler = None
@@ -406,6 +407,7 @@ class RequestHandler(BaseProtocol):
 
     def force_close(self) -> None:
         """Force close connection"""
+        print("force_close")
         self._force_close = True
         if self._waiter:
             self._waiter.cancel()
@@ -484,6 +486,7 @@ class RequestHandler(BaseProtocol):
         or response handling. Connection is being closed always unless
         keep_alive(True) specified.
         """
+        print(f"start {id(self)}")
         loop = self._loop
         handler = self._task_handler
         assert handler is not None
@@ -532,8 +535,10 @@ class RequestHandler(BaseProtocol):
 
                 # check payload
                 if not payload.is_eof():
+                    print("not payload.is_eof()", self._force_close)
                     lingering_time = self._lingering_time
                     if not self._force_close and lingering_time:
+                        print("1")
                         self.log_debug(
                             "Start lingering close timer for %s sec.", lingering_time
                         )
@@ -543,13 +548,16 @@ class RequestHandler(BaseProtocol):
 
                         with suppress(asyncio.TimeoutError, asyncio.CancelledError):
                             while not payload.is_eof() and now < end_t:
+                                print("loop")
                                 async with ceil_timeout(end_t - now):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
 
+                        print("3", payload.is_eof(), self._force_close)
                     # if payload still uncompleted
                     if not payload.is_eof() and not self._force_close:
+                        print("2")
                         self.log_debug("Uncompleted request.")
                         self.close()
 
